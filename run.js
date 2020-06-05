@@ -1,4 +1,10 @@
 const request = require('request');
+const mysql = require('mysql');
+
+const config = require('./db.json');
+
+const connection = mysql.createConnection(config);
+connection.connect();
 
 // 查询帖子列表
 const POSTS_URL = 'https://yuba.douyu.com/wbapi/web/group/postlist';
