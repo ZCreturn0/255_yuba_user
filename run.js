@@ -64,8 +64,8 @@ async function downloadImage(url, filename) {
         request({url})
         .pipe(
             fs.createWriteStream(`./images/${filename}`)
-            .on('close', () => {
-                console.log(url, 'downloaded');
+            .on('finish', () => {
+                // console.log(url, 'downloaded');
             })
         );
     });
@@ -76,21 +76,24 @@ async function go() {
         let posts = await getPagePost(i);
         for (let post of posts.data) {
             // console.log(post.post_id, post.title, post.nickname, post.safe_uid);
+            console.log(post.post_id);
             if (post.imglist.length) {
                 let index = 1;
                 for (let image of post.imglist) {
                     let reg = /\.([0-9a-z]+)(?:[\?#]|$)/i;
                     let imageUrl = image.url;
+                    console.log(imageUrl, 'to download');
                     let suffix = imageUrl.match(reg)[1];
                     let filename = `${post.post_id}_${index}.${suffix}`;
+                    index++;
                     await downloadImage(imageUrl, filename);
                 }
             }
-            let comments = await getPostComments(post.post_id, 1);
-            for (let comment of comments.data) {
-                // console.log(comment);
-                // console.log('---->', comment.content, comment.nick_name);
-            }
+            // let comments = await getPostComments(post.post_id, 1);
+            // for (let comment of comments.data) {
+            //     // console.log(comment);
+            //     // console.log('---->', comment.content, comment.nick_name);
+            // }
         }
     }
 }
