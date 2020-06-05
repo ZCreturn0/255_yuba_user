@@ -64,8 +64,8 @@ async function downloadImage(url, filename) {
         request({url})
         .pipe(
             fs.createWriteStream(`./images/${filename}`)
-            .on('finish', () => {
-                // console.log(url, 'downloaded');
+            .on('finish', (err) => {
+                resolve(err);
             })
         );
     });
