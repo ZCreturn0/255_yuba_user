@@ -1,10 +1,11 @@
 const request = require('request');
-const mysql = require('mysql');
+const fs = require('fs');
+// const mysql = require('mysql');
 
-const config = require('./db.json');
+// const config = require('./db.json');
 
-const connection = mysql.createConnection(config);
-connection.connect();
+// const connection = mysql.createConnection(config);
+// connection.connect();
 
 // 查询帖子列表
 const POSTS_URL = 'https://yuba.douyu.com/wbapi/web/group/postlist';
@@ -57,19 +58,40 @@ async function getPostComments(post_id, page) {
     });
 }
 
+// 下载图片
+async function downloadImage(url, filename) {
+    return new Promise((resolve, reject) => {
+        request({url})
+        .pipe(
+            fs.createWriteStream(`./images/${filename}`)
+            .on('close', () => {
+                console.log(url, 'downloaded');
+            })
+        );
+    });
+}
+
 async function go() {
     for (let i=1; i<=2; i++) {
         let posts = await getPagePost(i);
         for (let post of posts.data) {
             // console.log(post.post_id, post.title, post.nickname, post.safe_uid);
-            console.log(post.title, post.nickname);
+            if (post.imglist.length) {
+                let index = 1;
+                for (let image of post.imglist) {
+                    let reg = /\.([0-9a-z]+)(?:[\?#]|$)/i;
+                    let imageUrl = image.url;
+                    let suffix = imageUrl.match(reg)[1];
+                    let filename = `${post.post_id}_${index}.${suffix}`;
+                    await downloadImage(imageUrl, filename);
+                }
+            }
             let comments = await getPostComments(post.post_id, 1);
             for (let comment of comments.data) {
                 // console.log(comment);
-                console.log('---->', comment.content, comment.nick_name);
+                // console.log('---->', comment.content, comment.nick_name);
             }
         }
-        console.log('---------------------');
     }
 }
 
