@@ -1,5 +1,12 @@
+/**
+ * @description 鱼吧图片下载
+ */
+
 const request = require('request');
 const fs = require('fs');
+
+// 总页数
+const TOTAL_PAGE = 1940;
 // const mysql = require('mysql');
 
 // const config = require('./db.json');
@@ -71,29 +78,58 @@ async function downloadImage(url, filename) {
     });
 }
 
+async function sleep(ms) {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            resolve();
+        }, ms);
+    });
+}
+
 async function go() {
-    for (let i=1; i<=2; i++) {
+    for (let i = 51; i <= TOTAL_PAGE; i++) {
+        console.log('page:', i);
         let posts = await getPagePost(i);
         for (let post of posts.data) {
-            // console.log(post.post_id, post.title, post.nickname, post.safe_uid);
             console.log(post.post_id);
             if (post.imglist.length) {
                 let index = 1;
                 for (let image of post.imglist) {
                     let reg = /\.([0-9a-z]+)(?:[\?#]|$)/i;
                     let imageUrl = image.url;
-                    console.log(imageUrl, 'to download');
+                    console.log('post image:', imageUrl);
                     let suffix = imageUrl.match(reg)[1];
                     let filename = `${post.post_id}_${index}.${suffix}`;
                     index++;
                     await downloadImage(imageUrl, filename);
                 }
             }
-            // let comments = await getPostComments(post.post_id, 1);
-            // for (let comment of comments.data) {
-            //     // console.log(comment);
-            //     // console.log('---->', comment.content, comment.nick_name);
-            // }
+            let page = 1;
+            let comments = await getPostComments(post.post_id, page);
+            async function downloadCommentsImage(comments) {
+                for (let comment of comments.data) {
+                    let urlReg = /url=\"([^\'\"]*)\"/i;
+                    let urls = comment.content.match(urlReg);
+                    let index = 1;
+                    if (urls && urls.length) {
+                        let imgUrl = urls[1];
+                        let reg = /\.([0-9a-z]+)(?:[\?#]|$)/i;
+                        let suffix = imgUrl.match(reg) && imgUrl.match(reg)[1];
+                        let filename = `${post.post_id}_${comment.floor}_${index}.${suffix}`;
+                        if (~imgUrl.indexOf('img.douyucdn.cn')) {
+                            console.log('------------> reply image:', `page: ${page}`, imgUrl);
+                            await downloadImage(imgUrl, filename);
+                        }
+                    }
+                }
+                await sleep(2000);
+            }
+            await downloadCommentsImage(comments);
+            while (page < comments.page_total) {
+                page++;
+                comments = await getPostComments(post.post_id, page);
+                await downloadCommentsImage(comments);
+            }
         }
     }
 }
