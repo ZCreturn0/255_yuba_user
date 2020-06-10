@@ -70,7 +70,7 @@ async function downloadImage(url, filename) {
     return new Promise((resolve, reject) => {
         request({url})
         .pipe(
-            fs.createWriteStream(`./images/${filename}`)
+            fs.createWriteStream(`./images2/${filename}`)
             .on('finish', (err) => {
                 resolve(err);
             })
@@ -87,11 +87,13 @@ async function sleep(ms) {
 }
 
 async function go() {
-    for (let i = 51; i <= TOTAL_PAGE; i++) {
+    let currentDownload = 0;
+    for (let i = 568; i <= TOTAL_PAGE; i++) {
         console.log('page:', i);
         let posts = await getPagePost(i);
         for (let post of posts.data) {
             console.log(post.post_id);
+            let postDownload = 0;
             if (post.imglist.length) {
                 let index = 1;
                 for (let image of post.imglist) {
@@ -102,11 +104,16 @@ async function go() {
                     let filename = `${post.post_id}_${index}.${suffix}`;
                     index++;
                     await downloadImage(imageUrl, filename);
+                    postDownload++;
                 }
+                console.log(post.post_id, 'downloaded', postDownload);
+                currentDownload += postDownload;
+                console.log('currentDownload:', currentDownload);
             }
             let page = 1;
             let comments = await getPostComments(post.post_id, page);
             async function downloadCommentsImage(comments) {
+                let commentDownload = 0;
                 for (let comment of comments.data) {
                     let urlReg = /url=\"([^\'\"]*)\"/i;
                     let urls = comment.content.match(urlReg);
@@ -119,10 +126,14 @@ async function go() {
                         if (~imgUrl.indexOf('img.douyucdn.cn')) {
                             console.log('------------> reply image:', `page: ${page}`, imgUrl);
                             await downloadImage(imgUrl, filename);
+                            commentDownload++;
                         }
                     }
                 }
-                await sleep(2000);
+                console.log(post.post_id, 'comments downloaded', commentDownload);
+                currentDownload += commentDownload;
+                console.log('currentDownload:', currentDownload);
+                await sleep(1000);
             }
             await downloadCommentsImage(comments);
             while (page < comments.page_total) {
